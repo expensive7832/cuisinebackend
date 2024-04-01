@@ -4,41 +4,42 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 
-
 const namePattern = /^[a-z]{3,}$/i
 const emailPattern = /^[\w]{2,}@[a-z]{3,}\.[a-z]{2,}$/i
-const pwdPattern = /[a-z0-9\sA-Z]{5,}/
+
 
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
 
+  
+
   const { fname, lname, email, pwd } = req.body;
 
   if (fname === "" || lname === "" || email === "" || pwd === "") {
-    res.status(203).json({ message: "Input Field Cannot Be Empty" });
+    return res.status(203).json({ message: "Input Field Cannot Be Empty" });
 
-  } else if (!namePattern.test(fname) || !namePattern.test(lname)) {
-    res.status(203).json({ message: "Enter Valid Name" });
+  } else if(!namePattern.test(fname) || !namePattern.test(lname)) {
+    
+   return res.status(203).json({ message: "Enter Valid Name" });
 
   } else if (!emailPattern.test(email)) {
-    res.status(203).json({ message: "Enter Valid Email" });
+    return res.status(203).json({ message: "Enter Valid Email" });
 
-  } else if (!pwdPattern.test(pwd)) {
-    res.status(203).json({ message: "Enter Valid Password" });
-  }
-  else {
+  }else {
     const sql = "SELECT * FROM users WHERE email = $1";
-    Db.query(sql, [email], async (err, result) => {
+    Db.query(sql, [email], async(err, result) => {
       if (result.rows.length === 0) {
         const sql = "INSERT INTO users(fname, lname, email, pwd, token) VALUES($1,$2,$3,$4,$5) RETURNING *";
         const PWD_HASH = await bcrypt.genSalt(10)
-        bcrypt.hash(pwd, PWD_HASH, async (err, hash) => {
+       
+        bcrypt.hash(pwd, PWD_HASH, async(err, hash) => {
           if (err) {
             console.log(err);
           } else {
+            
             const signed = jwt.sign({ email }, process.env.TOKEN, { expiresIn: "24h" })
-            Db.query(sql, [fname, lname, email, hash, signed], (err, result) => {
+            await Db.query(sql, [fname, lname, email, hash, signed], (err, result) => {
               if (err) {
                 console.log({ message: err.stack });
               } else {
@@ -71,14 +72,15 @@ router.post("/login", async (req, res) => {
   } else {
     const sql = "SELECT * FROM users WHERE email = $1";
 
-    Db.query(sql, [email], async (err, result) => {
+    await Db.query(sql, [email], async (err, result) => {
       if (err) {
         console.log(err);
       } else {
         if (result.rows.length > 0 ) {
           bcrypt?.compare(pwd, result?.rows[0]?.pwd, (err, realPwd) => {
             if (err) {
-              res.status(203).json({ message: "password didnt match" });
+              // res.status(203).json({ message: "Invalid credentials" });
+              console.log(err.message);
             } else {
               if (realPwd === true) {
                 const token = jwt.sign({ id: result?.rows[0]?.id }, process.env.TOKEN, { expiresIn: "24h" })
@@ -108,26 +110,30 @@ router.post("/login", async (req, res) => {
 });
 
 
-router.post("/update/:id", (req, res) => {
+router.patch("/update/:id", async(req, res) => {
   const { fname, lname } = req.body
   const { id } = req.params
+
+ 
   const sql = "select token, id from users where id = $1"
-  Db.query(sql, [id], (err, result) => {
+  await Db.query(sql, [id], (err, result) => {
     if (err) {
       console.log(err)
     } else {
-      jwt.verify(result.rows[0]?.token, process.env.TOKEN, (err, info) => {
+     
+
+      jwt.verify(result.rows[0]?.token, process.env.TOKEN, async(err, info) => {
         if (err) {
           console.log(err)
         } else {
           if (result.rows[0]?.id === info?.id) {
             const sql = "UPDATE users SET fname = $1, lname = $2 WHERE id = $3 RETURNING *";
 
-            Db.query(sql, [fname, lname, info?.id], (err, result) => {
+            await Db.query(sql, [fname, lname, info?.id], (err, result) => {
               if (err) {
                 console.log(err)
               } else {
-                res.status(200).json({ message: "update Successful", user: { fname, lname } })
+                res.status(200).json({ message: "update Successful", user: { fname, lname,  } })
               }
             })
           }
@@ -136,12 +142,13 @@ router.post("/update/:id", (req, res) => {
     }
   })
 
+
 })
 
-router.post('/delete/:id', (req, res) => {
+router.delete('/delete/:id', (req, res) => {
   const { id } = req.params
-  const { token } = req.body
-
+ 
+ 
   const sql = "select token, id from users where id = $1"
   Db.query(sql, [id], (err, result) => {
     if (err) {

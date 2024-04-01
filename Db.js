@@ -1,16 +1,18 @@
 import pg from "pg"
 import dotenv from "dotenv"
 
+
 dotenv.config()
 
 const {Pool, Client} = pg
 
 const connection = new Pool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USERNAME,
-    password: process.env.DB_PWD,
-    database: process.env.DB_NAME,
-    ssl: true
+    // host: process.env.DB_HOST,
+    // user: process.env.DB_USERNAME,
+    // password: process.env.DB_PWD,
+    // database: process.env.DB_NAME,
+    // ssl: true
+    connectionString: process.env.POSTGRES_URL
 });
 
 connection.connect((err) => {
